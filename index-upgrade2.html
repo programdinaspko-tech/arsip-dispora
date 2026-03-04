@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistem Arsip Digital - Dinas PKO</title>
+<style>
+#excelTable {
+    border-collapse: collapse;
+    width: 100%;
+    background: #ffffff !important;
+    font-size: 13px;
+}
+
+#excelTable th,
+#excelTable td {
+    border: 1px solid #e5e7eb;
+    padding: 8px;
+    text-align: left;
+    background: #ffffff !important;
+}
+
+#excelTable th {
+    background: #f9fafb !important;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+#excelTable tr:nth-child(even) {
+    background: #f9fafb !important;
+}
+
+#excelTable tr:hover {
+    background: #e2e8f0 !important;
+}
+</style>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+.fade-enter {
+    opacity: 0;
+    transform: translateY(10px);
+}
+.fade-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: all 0.3s ease;
+}
+</style>
+</head>
+
+<body class="bg-gray-100 font-sans">
+
+<!-- LOGIN -->
+<div id="loginPage" class="min-h-screen flex items-center justify-center bg-slate-900">
+  <div class="bg-white p-8 rounded-xl shadow-xl w-96">
+    <div class="flex flex-col items-center mb-4">
+      <img src="https://i.ibb.co.com/BHBqRgt4/Cuplikan-layar-2026-02-04-113824-removebg-preview.png" class="w-20 mb-3">
+      <h2 class="text-2xl font-bold text-blue-900">Login Arsip</h2>
+    </div>
+    <form onsubmit="handleLogin(event)">
+      <input id="username" type="text" placeholder="Username" class="w-full mb-4 p-3 border rounded">
+      <input id="password" type="password" placeholder="Password" class="w-full mb-4 p-3 border rounded">
+      <button class="w-full bg-slate-900 text-white p-3 rounded">Login</button>
+    </form>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboardPage" class="hidden h-screen flex">
+
+<!-- SIDEBAR -->
+<aside id="sidebar" 
+class="w-64 bg-slate-900 text-white flex flex-col transition-all duration-300 ease-in-out">
+<div class="p-6 border-b border-slate-700 text-center">
+<img src="https://i.ibb.co.com/Xf08TH8Z/arsipdinaspko.png" alt="arsipdinaspko" class="w-16 mx-auto mb-2">
+<h1 class="text-sm font-bold">ARSIP PERENCANAAN SEKRETARIAT<br>Dinas PKO</h1>
+</div>
+
+<nav class="flex-1 p-4 space-y-2 text-sm">
+<button onclick="showDashboard()" class="w-full text-left px-4 py-2 hover:bg-slate-700 rounded">📊 Dashboard</button>
+<button onclick="showData()" class="w-full text-left px-4 py-2 hover:bg-slate-700 rounded">📁 Data Arsip</button>
+<button onclick="showTambah()" class="w-full text-left px-4 py-2 hover:bg-slate-700 rounded">🧑‍🧑‍🧒 Tambah Arsip</button>
+<button id="menuUser" onclick="showUser()" class="w-full text-left px-4 py-2 hover:bg-slate-700 rounded">👩‍💻 Kelola User</button>
+<hr class="border-slate-700 my-4">
+<button onclick="logout()" class="w-full text-left px-4 py-2 bg-red-600 hover:bg-red-700 rounded">⏯️ Logout</button>
+</nav>
+</aside>
+
+<!-- CONTENT -->
+<main class="flex-1 p-6 overflow-auto">
+
+<!-- DASHBOARD -->
+<div id="contentDashboard">
+<div class="flex items-center mb-6 space-x-3">
+    <button onclick="toggleSidebar()" 
+        class="bg-slate-800 text-white px-3 py-2 rounded">
+        📶
+    </button>
+
+    <h2 class="text-2xl font-bold">Dashboard</h2>
+</div>
+<div class="grid grid-cols-3 gap-6 mb-6">
+<div class="bg-white p-6 rounded shadow text-center">
+<p>Total Arsip</p>
+<h3 id="totalArsip" class="text-3xl font-bold text-blue-700">0</h3>
+</div>
+<div class="bg-yellow-100 p-4 rounded shadow">
+    <h3 class="text-lg font-bold">Pending</h3>
+    <p id="totalPending" class="text-2xl font-bold">0</p>
+</div>
+
+<div class="bg-green-100 p-4 rounded shadow">
+    <h3 class="text-lg font-bold">Disetujui</h3>
+    <p id="totalApproved" class="text-2xl font-bold">0</p>
+</div>
+
+<div class="bg-white p-6 rounded shadow text-center">
+<p>Kategori</p>
+<h3 id="totalKategori" class="text-3xl font-bold text-green-600">0</h3>
+</div>
+<div class="bg-white p-6 rounded shadow text-center">
+<p>File</p>
+<h3 id="totalFile" class="text-3xl font-bold text-purple-600">0</h3>
+</div>
+</div>
+<div class="bg-white p-6 rounded shadow">
+<canvas id="chartKategori"></canvas>
+</div>
+</div>
+
+<!-- DATA -->
+<div id="contentData" class="hidden">
+<h2 class="text-2xl font-bold mb-4">Data Arsip</h2>
+
+<div class="mb-4 flex gap-2">
+<button onclick="backupData()" class="bg-green-600 text-white px-3 py-2 rounded text-sm">Backup</button>
+<label class="bg-yellow-500 text-white px-3 py-2 rounded text-sm cursor-pointer">
+Restore
+<input type="file" hidden onchange="restoreData(event)">
+</label>
+</div>
+
+<div class="bg-white p-6 rounded shadow overflow-x-auto">
+<table class="w-full text-sm">
+<thead class="border-b">
+<tr>
+<th>No</th>
+<th>No Surat</th>
+<th>Tanggal</th>
+<th>Kategori</th>
+<th>Perihal</th>
+<th>Nama File</th>
+<th>Status</th>
+<th>Aksi</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
+</div>
+</div>
+
+<!-- TAMBAH -->
+<div id="contentTambah" class="hidden">
+<h2 class="text-2xl font-bold mb-4">Tambah Arsip</h2>
+<form onsubmit="handleUpload(event)" class="bg-white p-6 rounded shadow space-y-4">
+<input id="noSurat" type="text" placeholder="Nomor Surat" class="w-full border p-3 rounded">
+<input id="tanggalSurat" type="date" class="w-full border p-3 rounded">
+<input id="kategori" type="text" placeholder="Kategori" class="w-full border p-3 rounded">
+<input id="perihal" type="text" placeholder="Perihal" class="w-full border p-3 rounded">
+<input type="file" id="fileUpload" class="w-full border p-3 rounded">
+<button class="bg-slate-900 text-white px-4 py-2 rounded">Simpan Arsip</button>
+</form>
+</div>
+
+<!-- USER -->
+<div id="contentUser" class="hidden">
+<h2 class="text-2xl font-bold mb-4">Kelola User</h2>
+<div class="bg-white p-6 rounded shadow">
+  <div class="mb-4">
+<input id="newUsername" placeholder="Username"
+class="border p-2 mr-2 rounded">
+
+<input id="newPassword" placeholder="Password"
+class="border p-2 mr-2 rounded">
+
+<button onclick="addUser()"
+class="bg-blue-600 text-white px-4 py-2 rounded">
+Tambah User
+</button>
+
+</div>
+<input id="searchUser" 
+onkeyup="searchUser()" 
+placeholder="Cari user..." 
+class="border p-2 mb-3 rounded w-1/3">
+<table class="w-full text-sm">
+<thead class="border-b">
+<thead class="bg-gray-200">
+<tr>
+<th class="p-2">Username</th>
+<th class="p-2">Role</th>
+<th class="p-2 text-center">Aksi</th>
+</tr>
+</thead>
+<tbody id="userTable"></tbody>
+</table>
+</div>
+
+</div>
+</main>
+
+<!-- MODAL PREVIEW -->
+<div id="previewModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white w-3/4 h-3/4 p-4 relative">
+
+    <div class="flex justify-between items-center p-4 border-b">
+      <h2 class="font-bold text-lg">Preview Dokumen</h2>
+      <button onclick="closePreview()" class="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded">❎</button>
+    </div>
+
+    <div id="previewContent" class="h-full overflow-auto"></div>
+
+</div>
+<script>
+
+let users = JSON.parse(localStorage.getItem("users")) || [
+    {username:"Admin",password:"admin2026",role:"admin"},
+    {username:"Operator",password:"operator2026",role:"operator"}
+];
+let currentUser = null;
+let arsipData = JSON.parse(localStorage.getItem("arsipData")) || [];
+let tableBody = document.getElementById("tableBody");
+
+function handleLogin(e){
+e.preventDefault();
+let user=users.find(u=>u.username==username.value && u.password==password.value);
+if(user){
+currentUser=user;
+
+// TAMBAHKAN BARIS INI
+localStorage.setItem("currentUser", JSON.stringify(user));
+
+loginPage.classList.add("hidden");
+dashboardPage.classList.remove("hidden");
+if(user.role!=="admin"){menuUser.classList.add("hidden");}
+loadData();updateDashboard();loadUsers();
+}else{alert("Login salah!");}
+}
+
+function logout(){
+localStorage.removeItem("currentUser");
+location.reload();
+}
+
+function hideAll(){
+contentDashboard.classList.add("hidden");
+contentData.classList.add("hidden");
+contentTambah.classList.add("hidden");
+contentUser.classList.add("hidden");
+}
+
+function showDashboard(){hideAll();contentDashboard.classList.remove("hidden");updateDashboard();}
+function showData(){hideAll();contentData.classList.remove("hidden");loadData();}
+function showTambah(){hideAll();contentTambah.classList.remove("hidden");}
+function showUser(){if(currentUser.role!=="admin"){alert("Akses ditolak");return;}hideAll();contentUser.classList.remove("hidden");}
+function loadUsers(){
+userTable.innerHTML="";
+
+users.forEach((u,i)=>{
+
+userTable.innerHTML+=`
+<tr class="border-b">
+<td class="p-2">${u.username}</td>
+<td class="p-2">${u.role}</td>
+<td class="p-2 text-center">
+
+${u.username !== "Admin" ? 
+`<button onclick="deleteUser(${i})" 
+class="bg-red-500 text-white px-2 py-1 rounded text-xs">
+Hapus
+</button>` 
+: `<span class="text-gray-400 text-xs">Terkunci</span>`}
+
+</td>
+</tr>
+`;
+
+});
+}
+
+function handleUpload(e){
+e.preventDefault();
+let file=fileUpload.files[0];
+if(!file){alert("Lengkapi data!");return;}
+let reader=new FileReader();
+reader.onload=function(ev){
+arsipData.push({
+    noSurat: noSurat.value,
+    tanggal: tanggalSurat.value,
+    kategori: kategori.value,
+    perihal: perihal.value,
+    fileName: file.name,
+    fileData: ev.target.result,
+    status: "Pending",
+    uploader: currentUser.username
+});
+localStorage.setItem("arsipData",JSON.stringify(arsipData));
+e.target.reset();loadData();updateDashboard();showData();
+};
+reader.readAsDataURL(file);
+}
+
+function loadData(){
+    tableBody.innerHTML="";
+
+    arsipData.forEach((d,i)=>{
+
+        // Operator hanya lihat yang disetujui
+        if(currentUser && currentUser.role === "operator"){
+    if(d.uploader !== currentUser.username){
+        return;
+    }
+}
+
+        tableBody.innerHTML+=`
+        <tr class="border-b">
+            <td>${i+1}</td>
+            <td>${d.noSurat}</td>
+            <td>${d.tanggal}</td>
+            <td>${d.kategori}</td>
+            <td>${d.perihal}</td>
+            <td>${d.status}</td>
+            <td>
+                 <span class="${
+        d.status==="Pending"
+        ? "text-yellow-600 font-bold"
+        : "text-green-600 font-bold"
+    }">
+        ${d.status}
+    </span>
+</td>
+                <button onclick="previewFileById('${d.noSurat}')" class="bg-indigo-600 text-white px-2 py-1 rounded text-xs">Preview</button>
+                <button onclick="downloadFile(${i})" class="bg-blue-500 text-white px-2 py-1 rounded text-xs">Download</button>
+
+                ${currentUser && currentUser.role==="admin" && d.status==="Pending"
+                ? `<button onclick="approveData(${i})" class="bg-green-600 text-white px-2 py-1 rounded text-xs">Setujui</button>`
+                : ""}
+
+                ${currentUser && currentUser.role==="admin"
+                ? `<button onclick="hapusData(${i})" class="bg-red-500 text-white px-2 py-1 rounded text-xs">Hapus</button>`
+                : ""}
+
+                ${currentUser && currentUser.role==="operator" && d.status==="Pending"
+                ? `<button onclick="hapusData(${i})" class="bg-red-500 text-white px-2 py-1 rounded text-xs">Batal</button>`
+                : ""}
+
+            </td>
+        </tr>`;
+    });
+
+    // Simpan ulang jika ada perubahan status default
+    localStorage.setItem("arsipData", JSON.stringify(arsipData));
+}
+
+function downloadFile(i){
+    let a=document.createElement("a");
+    a.href=arsipData[i].fileData;
+    a.download=arsipData[i].fileName;
+    a.click();
+}
+
+function hapusData(i){
+    arsipData.splice(i,1);
+    localStorage.setItem("arsipData",JSON.stringify(arsipData));
+    loadData();
+    updateDashboard();
+}
+
+function approveData(i){
+    arsipData[i].status = "Disetujui";
+    localStorage.setItem("arsipData",JSON.stringify(arsipData));
+    loadData();
+    updateDashboard();
+}
+
+function updateDashboard(){
+
+    totalArsip.innerText = arsipData.length;
+    totalFile.innerText = arsipData.length;
+
+    let kategoriCount = {};
+    let pending = 0;
+    let approved = 0;
+
+    arsipData.forEach(d=>{
+
+        if(!d.status){
+            d.status = "Disetujui";
+        }
+
+        if(d.status === "Pending"){
+            pending++;
+        }
+
+        if(d.status === "Disetujui"){
+            approved++;
+        }
+
+        kategoriCount[d.kategori]=(kategoriCount[d.kategori]||0)+1;
+    });
+
+    totalKategori.innerText = Object.keys(kategoriCount).length;
+
+    // UPDATE CARD BARU
+    document.getElementById("totalPending").innerText = pending;
+    document.getElementById("totalApproved").innerText = approved;
+
+    if(typeof chart !== "undefined" && chart){
+        chart.destroy();
+    }
+
+    chart = new Chart(chartKategori,{
+        type:"bar",
+        data:{
+            labels:["Pending","Disetujui"],
+            datasets:[{
+                label:"Status Arsip",
+                data:[pending, approved]
+            }]
+        }
+    });
+}
+
+function addUser(){
+    let username=document.getElementById("newUsername").value;
+    let password=document.getElementById("newPassword").value;
+
+    if(!username || !password){
+        alert("Lengkapi data!");
+        return;
+    }
+
+    if(users.find(u=>u.username===username)){
+        alert("Username sudah digunakan!");
+        return;
+    }
+
+    users.push({
+        username:username,
+        password:password,
+        role:"operator"
+    });
+
+    localStorage.setItem("users", JSON.stringify(users));
+
+    loadUsers();
+
+    document.getElementById("newUsername").value="";
+    document.getElementById("newPassword").value="";
+
+    alert("User operator berhasil ditambahkan!");
+}
+
+function deleteUser(index){
+    if(!confirm("Yakin ingin menghapus user ini?")) return;
+
+    users.splice(index,1);
+    localStorage.setItem("users", JSON.stringify(users));
+    loadUsers();
+    alert("User berhasil dihapus!");
+}
+
+function searchUser(){
+    let input=document.getElementById("searchUser").value.toLowerCase();
+    let rows=document.querySelectorAll("#userTable tr");
+
+    rows.forEach(row=>{
+        let text=row.innerText.toLowerCase();
+        row.style.display=text.includes(input) ? "" : "none";
+    });
+}
+
+function toggleSidebar(){
+    let sidebar = document.getElementById("sidebar");
+
+    if(sidebar.classList.contains("-ml-64")){
+        sidebar.classList.remove("-ml-64");
+    }else{
+        sidebar.classList.add("-ml-64");
+    }
+}
+
+// Pastikan users tersimpan pertama kali
+if(!localStorage.getItem("users")){
+    localStorage.setItem("users", JSON.stringify(users));
+}
+
+function previewFileById(noSurat){
+
+    const file = arsipData.find(d => d.noSurat === noSurat);
+
+    if(!file){
+        alert("File tidak ditemukan.");
+        return;
+    }
+
+    const content = document.getElementById("previewContent");
+    content.innerHTML = "";
+
+    // ================= PDF =================
+    if(file.fileName.toLowerCase().endsWith(".pdf")){
+
+        content.innerHTML = `
+            <iframe src="${file.fileData}" class="w-full h-[80vh]"></iframe>
+        `;
+    }
+
+    // ================= IMAGE =================
+    else if(file.fileName.match(/\.(jpg|jpeg|png)$/i)){
+
+        content.innerHTML = `
+            <img src="${file.fileData}" class="max-w-full mx-auto">
+        `;
+    }
+
+    // ================= EXCEL =================
+    else if(file.fileName.match(/\.(xls|xlsx)$/i)){
+
+    let base64 = file.fileData.split(",")[1];
+    let workbook = XLSX.read(base64, {type: "base64"});
+    let sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+    let html = XLSX.utils.sheet_to_html(sheet);
+
+    html = html.replace("<table",
+        "<table id='excelTable' class='min-w-full border border-gray-300 bg-white text-sm'>"
+    );
+
+    content.innerHTML = `
+        <div class="overflow-auto h-[75vh] bg-white p-2">
+            ${html}
+        </div>
+    `;
+
+    setTimeout(addHeaderFilter, 100);
+    }
+
+    // ================= WORD =================
+    else if(file.fileName.match(/\.(doc|docx)$/i)){
+
+        content.innerHTML = `
+            <div class="text-center p-10">
+                <p class="mb-4 font-semibold">Preview Word terbatas di browser.</p>
+                <p class="mb-4">Silakan download untuk melihat isi lengkap.</p>
+                <button onclick="downloadFileById('${file.noSurat}')"
+                class="bg-blue-600 text-white px-4 py-2 rounded">
+                Download Dokumen
+                </button>
+            </div>
+        `;
+    }
+
+    document.getElementById("previewModal").classList.remove("hidden");
+}
+
+
+function filterExcelColumn(colIndex, value){
+
+    let table = document.getElementById("excelTable");
+    let rows = table.querySelectorAll("tr");
+
+    value = value.toLowerCase();
+
+    rows.forEach((row, index)=>{
+
+        if(index === 0) return;
+
+        let cells = row.querySelectorAll("td");
+
+        if(!cells[colIndex]) return;
+
+        let text = cells[colIndex].innerText.toLowerCase();
+
+        if(text.includes(value)){
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
+
+    });
+}
+
+function addFilterRow(){
+
+    let table = document.getElementById("excelTable");
+    if(!table) return;
+
+    let header = table.querySelector("tr");
+    let filterRow = document.createElement("tr");
+
+    let headers = header.querySelectorAll("th, td");
+
+    headers.forEach((cell, index)=>{
+
+        let th = document.createElement("th");
+
+        th.innerHTML = `
+            <input type="text"
+                   placeholder="Filter"
+                   onkeyup="filterByColumn(${index}, this.value)"
+                   style="width:100%; padding:4px; font-size:12px;">
+        `;
+
+        filterRow.appendChild(th);
+    });
+
+    header.parentNode.insertBefore(filterRow, header.nextSibling);
+}
+
+function filterByColumn(colIndex, value){
+
+    let table = document.getElementById("excelTable");
+    if(!table) return;
+
+    let rows = table.querySelectorAll("tr");
+    value = value.toLowerCase();
+
+    rows.forEach((row, index)=>{
+
+        // Lewati header & filter row
+        if(index <= 1) return;
+
+        let cells = row.querySelectorAll("td");
+        if(!cells[colIndex]) return;
+
+        let text = cells[colIndex].innerText.toLowerCase();
+        row.style.display = text.includes(value) ? "" : "none";
+    });
+}
+
+function addHeaderFilter(){
+
+    let table = document.getElementById("excelTable");
+    if(!table) return;
+
+    let headerRow = table.querySelector("tr");
+    let headers = headerRow.querySelectorAll("th, td");
+
+    headers.forEach((cell, index)=>{
+
+        let title = cell.innerText;
+
+        cell.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:4px;">
+                <span onclick="sortTable(${index})"
+                      style="font-weight:600; cursor:pointer; font-size:12px;">
+                       ${title} <span id="arrow-${index}">↕</span>
+                </span>
+
+                <input type="text"
+                       data-col="${index}"
+                       onkeyup="applyFilters()"
+                       class="headerFilter"
+                       placeholder="Cari..."
+                       style="padding:4px; font-size:11px; border:1px solid #e5e7eb; border-radius:4px; width:100%;">
+            </div>
+          `;
+    });
+
+    addResetButton();
+}
+
+function applyFilters(){
+
+    let table = document.getElementById("excelTable");
+    let rows = table.querySelectorAll("tr");
+    let filters = document.querySelectorAll(".headerFilter");
+
+    rows.forEach((row, rowIndex)=>{
+
+        if(rowIndex === 0) return;
+
+        let cells = row.querySelectorAll("td");
+        let showRow = true;
+
+        filters.forEach(filter => {
+
+            let col = filter.dataset.col;
+            let value = filter.value.toLowerCase();
+
+            if(value !== ""){
+                let text = cells[col]?.innerText.toLowerCase() || "";
+
+                if(!text.includes(value)){
+                    showRow = false;
+                }
+            }
+        });
+
+        row.style.display = showRow ? "" : "none";
+        highlightRow(row);
+    });
+}
+
+function highlightRow(row){
+
+    if(row.style.display === "none"){
+        row.style.background = "";
+        return;
+    }
+
+    row.style.background = "#f1f5f9";
+}
+
+function filterTable(colIndex, value){
+
+    let table = document.getElementById("excelTable");
+    if(!table) return;
+
+    let rows = table.querySelectorAll("tr");
+    value = value.toLowerCase();
+
+    rows.forEach((row, index)=>{
+
+        if(index === 0) return; // hanya lewati header
+
+        let cells = row.querySelectorAll("td");
+        if(!cells[colIndex]) return;
+
+        let text = cells[colIndex].innerText.toLowerCase();
+        row.style.display = text.includes(value) ? "" : "none";
+    });
+}
+
+function closePreview(){
+    const modal = document.getElementById("previewModal");
+    if(modal){
+        modal.classList.add("hidden");
+    }
+}
+
+let sortDirection = {};
+
+function sortTable(colIndex){
+
+    let table = document.getElementById("excelTable");
+    let rows = Array.from(table.querySelectorAll("tr")).slice(1);
+
+    sortDirection[colIndex] = !sortDirection[colIndex];
+
+    rows.sort((a,b)=>{
+
+        let A = a.querySelectorAll("td")[colIndex]?.innerText.toLowerCase() || "";
+        let B = b.querySelectorAll("td")[colIndex]?.innerText.toLowerCase() || "";
+
+        if(!isNaN(A) && !isNaN(B)){
+            return sortDirection[colIndex] ? A-B : B-A;
+        }
+
+        return sortDirection[colIndex]
+            ? A.localeCompare(B)
+            : B.localeCompare(A);
+    });
+
+    rows.forEach(row => table.appendChild(row));
+
+    // Update icon
+    document.querySelectorAll("[id^='arrow-']").forEach(el => el.innerText = "↕");
+    document.getElementById("arrow-"+colIndex).innerText =
+        sortDirection[colIndex] ? "⬆" : "⬇";
+}
+
+function addResetButton(){
+
+    let table = document.getElementById("excelTable");
+    let container = table.parentElement;
+
+    let btn = document.createElement("button");
+    btn.innerText = "Reset Filter";
+    btn.style.marginBottom = "10px";
+    btn.style.padding = "6px 10px";
+    btn.style.background = "#dc2626";
+    btn.style.color = "white";
+    btn.style.borderRadius = "4px";
+
+    btn.onclick = function(){
+
+        document.querySelectorAll(".headerFilter").forEach(f=>f.value="");
+        document.querySelectorAll("#excelTable tr").forEach(r=>{
+            r.style.display="";
+            r.style.background="";
+        });
+    };
+
+    container.insertBefore(btn, table);
+}
+
+window.onload = function(){
+
+    // Ambil semua elemen setelah HTML selesai dibuat
+    loginPage = document.getElementById("loginPage");
+    dashboardPage = document.getElementById("dashboardPage");
+    menuUser = document.getElementById("menuUser");
+
+    contentDashboard = document.getElementById("contentDashboard");
+    contentData = document.getElementById("contentData");
+    contentTambah = document.getElementById("contentTambah");
+    contentUser = document.getElementById("contentUser");
+
+    // Cek session login
+    let savedUser = JSON.parse(localStorage.getItem("currentUser"));
+
+    if(savedUser){
+
+        currentUser = savedUser;
+
+        loginPage.classList.add("hidden");
+        dashboardPage.classList.remove("hidden");
+
+        if(currentUser.role !== "admin"){
+            menuUser.classList.add("hidden");
+        }
+
+        loadData();
+        updateDashboard();
+        loadUsers();
+    }
+};
+</script>
+</body>
+</html>
